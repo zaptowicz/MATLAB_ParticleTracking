@@ -107,7 +107,7 @@ if ~isempty(packed)
         disp('Issue with bitpacking. pix_w*pix_h*10bit/8bit result in non-interger number of bytes.')
     end
     fmax=floor((Nbytes-byte_offset-m*n*5/4)./(m*n*5/4+byte_spacing))+1;
-    fsize=m*n*5/4+byte_spacing
+    fsize=m*n*5/4+byte_spacing;
     data_type = 'uint16';
 elseif ~isempty(unpacked)
     fmax=floor((Nbytes-byte_offset-m*n*2)./(m*n*2+byte_spacing))+1;
@@ -144,10 +144,10 @@ for count=1:frame_N
         fseek(fid,fsize*frame_skip,'cof'); % Remove extra bytes between frames
     end
     if ~isempty(packed)
-        frame = fread(fid,int64(m*n*5/4),'ubit10->uint16');
-
+        rawimg = fread(fid,m*n,'ubit10=>uint16');
+        rawimg = reshape(rawimg,[m,n]);
     else
-        rawimg=fread(fid,[m,n],data_type);
+        rawimg = fread(fid,[m,n],data_type);
     end
     vid(:,:,count)=rawimg';
     count=count+1;
@@ -160,128 +160,3 @@ end
 fclose(fid);
 
 end
-
-%
-% ;+
-% ; NAME:
-% ;      READ_RAW
-% ;
-% ; PURPOSE:
-% ;      Read in video files which are a sequence of images.
-% ;
-% ; CATEGORY:
-% ;      Kevin/Utility
-% ;
-% ; CALLING SEQUENCE:
-% ;      a = read_raw(filename, pix_w, pix_h)
-% ;      a = read_raw('test.vif',656,491,byte_offset=72,byte_spacing=136,unpacked='y')
-% ;      a = read_raw('test.vif',700,700,byte_offset=8,byte_spacing=496, frame_start=100, frame_N=200)
-% ;
-% ; INPUTS:
-% ;       filename: name of binary video file to be opened
-% ;          pix_w: width of frame in pixels
-% ;          pix_h: width of frame in pixels .
-% ;    byte_offset: number of bytes to skip before first image
-% ;   byte_spacing: number of bytes to skip between frames
-% ;
-% ; KEYWORDS:
-% ;    frame_start: number of frames to skip before reading 'first' frame
-% ;       frame_N: total number of frames to read in
-% ;     frame_skip: Number of frames to skip (e.g. 1 will skip every other frame)
-% ;         packed: set this keyword if data is 10 bit packed.
-% ;       unpacked: set this keyword if data is 10 bit unpacked.
-% ;          scale: set this keyword to scale the outmatrix into 8 bits
-% ;
-% ; OUTPUTS:
-% ;              a: three dimensional matrix containing video
-% ;
-% ; RESTRICTIONS:
-% ;
-% ; PROCEDURE:
-% ;      Wrote to be similar to ImageJ import function.
-% ;
-% ; NOTES:
-% ;    KBA: To use to read in .vif files from uniqvision packed 10-bit CCD, the following worked
-% ;         IDL> a=read_raw('frames_10_1fps.vif',656,491,byte_offset=72,byte_spacing=324,/packed, frame_N=10)
-% ;
-% ;    KBA: To determine input parameters, use the .ini file
-% ;         frameIOSize --> Bytes for each frame. To determine byte_spacing, subtract number of bytes for each image
-% ;         example ... a 700 x 700 8-bit (1 byte) image with a frameIOsize of 490496 will result in
-% ;         byte_spacing = 490496-700*700*1 byte
-% ;
-% ;
-% ; MODIFICATION HISTORY:
-% ; Created by Kevin B. Aptowicz, West Chester University
-% ; 30-May-2013: KBA.
-%
-% ;
-% ; Copyright (c) 2013 Kevin B. Aptowicz
-% ;
-% ;-
-
-% ; Get the house in order ...
-% m = long64(pix_w)
-% n = long64(pix_h)
-% if  not keyword_set(byte_offset) then byte_offset=0
-% if  not keyword_set(byte_spacing) then byte_spacing=0
-% if  not keyword_set(frame_start) then frame_start=0
-%
-% ; Determine maximum number of frames
-% finfo=file_info(filename)
-% Nbytes=finfo.size
-% if keyword_set(packed) then begin
-% 	fmax=floor((Nbytes-byte_offset-m*n*5L/4L)/(m*n*5L/4L+byte_spacing))+1
-% 	rawimg = bytarr(n*m*5L/4L)              ;; 10-bit packed is 20% more than 8-bit
-% 	fsize=m*n*5L/4L+byte_spacing
-% endif else if keyword_set(unpacked) then begin
-%     fmax=floor((Nbytes-byte_offset-m*n)/(m*n*2L+byte_spacing))+1
-%     rawimg = uintarr(n*m)              ;; 10-bit unpacked is 100% more than 8-bit
-%     fsize=m*n*2L+byte_spacing
-% endif else begin
-%     fmax=floor((Nbytes-byte_offset-m*n)/(m*n+byte_spacing))+1
-%     rawimg = bytarr(n*m)              ;; plane old 8-bit
-%     fsize=m*n+byte_spacing
-% endelse
-%
-% if keyword_set(frame_N) then begin
-% 	if fmax lt (frame_start + frame_N) then begin
-% 	print, 'WARNING: Not enough frames ... truncating size'
-% 	if frame_start gt fmax   then frame_start=0
-% 	endif else begin
-% 		fmax = frame_start + frame_N
-% 	endelse
-%
-% endif
-%
-%
-%
-% vid=uintarr(m,n,fmax-frame_start)
-% count=0L
-% for i=frame_start, fmax-1 do begin
-% 	if keyword_set(byte_spacing) && count ne 0 then readu,lun,trash
-% 	readu,lun, rawimg             ;; Read data
-%     if keyword_set(packed) then begin
-%     	rawimg = reform(rawimg, 5L, n*m/4L)     ;; Reform into quintuples
-% 		rawimg=reverse(rawimg)
-% 		outimg = intarr(4, n*m/4)             ;; Make new output image of quadruples
-% 		outimg(0,*) = ishft(rawimg(0,*) AND 'ff'x,2) + ishft(rawimg(1,*) AND 'c0'x,-6)
-% 		outimg(1,*) = ishft(rawimg(1,*) AND '3f'x,4) + ishft(rawimg(2,*) AND 'f0'x,-4)
-% 		outimg(2,*) = ishft(rawimg(2,*) AND '0f'x,6) + ishft(rawimg(3,*) AND 'fc'x,-2)
-% 		outimg(3,*) = ishft(rawimg(3,*) AND '03'x,8) + ishft(rawimg(4,*) AND 'ff'x, 0)
-% 		outimg=reverse(outimg)
-% 		outimg = reform(outimg, n, m)         ;; Convert back to an NxM array
-% 		vid(*,*,count)=outimg
-% 	endif else if keyword_set(unpacked) then begin
-% 	vid(*,*,count)=reform(rawimg,n,m)
-% 	endif else vid(*,*,count)=reform(rawimg,n,m)
-% 	count=count+1L
-% endfor
-%
-% if keyword_set(scale) then begin
-% 	vid=double(vid)
-% 	vid=byte(vid/4L)
-% endif
-%
-% free_lun, lun
-% return, vid
-% end
