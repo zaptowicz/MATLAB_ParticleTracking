@@ -182,7 +182,7 @@ for i=1:nf
     j = 1; Ncounts=inf;
     while (j ~= ndt+1) | (isempty(maxtime) & isempty(mydts) & (Ncounts > minN))
         if filebased && isempty(quiet)
-            disp(['Processing file: ',f(i).name,' -- dt equals: ', num2str(dt(j)));
+            disp(['Processing file: ',f(i).name,' -- dt equals: ', num2str(dt(j))]);
         elseif isempty(quiet)
             disp(['dt equals: ', num2str(dt(j))])
         end
