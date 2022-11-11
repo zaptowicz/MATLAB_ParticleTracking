@@ -92,7 +92,7 @@ for i = 1:nf
 	res(:,:,i) = g-b;
 end
 
-res=res/factor;  % Rescale image 
+res=255*res/max(res(:));  % Rescale max to 8-bit 
 
 % By default, negative values are set to zero, but this can be skipped
 % using the noclip parameter (noclip = 'y')
